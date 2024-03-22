@@ -1,32 +1,125 @@
-# Cybersecurity 150 Lab
+# Cybersecurity 150 Midterm
 
-## Name of Project
-ESP32 Amazing Cyber Program
+## Name of Projecthttps://github.com/lortega18/CSN150-Documentation-Template/tree/main
+My fun WiFi Access Point Webserver
 
 ## Purpose
-Create an ESP32 project using the ESP32CAM.
+Using Adafruit Metro ESP32 Wi-Fi Access Point for Web Server
 
 ## Equipment
-* [ESP32Cam](https://www.amazon.com/Aideepen-ESP32-CAM-Bluetooth-ESP32-CAM-MB-Arduino/dp/B08P2578LV/ref=sr_1_3?crid=4FY0ECFW0ZX7&keywords=ESP32+Cam&qid=1678902050&sprefix=esp32+cam%2Caps%2C240&sr=8-3)
+Adafruit Metro ESP32
+USB-C Data Cable
 
-* [USB Micro Data Cable](https://www.amazon.com/AmazonBasics-Male-Micro-Cable-Black/dp/B0711PVX6Z/ref=sr_1_1_sspa?keywords=micro+usb+data+cable&qid=1678902214&sprefix=Micro+USB+data+%2Caps%2C89&sr=8-1-spons&psc=1&spLa=ZW5jcnlwdGVkUXVhbGlmaWVyPUFaU0NaUVZHU1RFUlAmZW5jcnlwdGVkSWQ9QTA3NTA4MDVFVERCS01HVlgxM1YmZW5jcnlwdGVkQWRJZD1BMDE4NTE1NTIwWUdONkdWSzU1M1Amd2lkZ2V0TmFtZT1zcF9hdGYmYWN0aW9uPWNsaWNrUmVkaXJlY3QmZG9Ob3RMb2dDbGljaz10cnVl)
 
 ## Link to Documentation Followed
-- [GitHub - martin-ger/esp32_nat_router](https://github.com/martin-ger/esp32_nat_router)
-
-##### Youtube Video 1: 
-
-##### Youtube Video 2: 
-
-##### Other Links: 
-
+https://randomnerdtutorials.com/esp32-access-point-ap-web-server/
 
 ## Steps I followed
-1. Write the steps you followed here.  This way you can keep track of where you might have messed up if the project does not work. 
+1. Installing ESP32 Adafruit Metro on Arduino
+2. I made sure I had the correct boards and ports 
+3. Left code as is
+4. Select Verify then Upload
+5. After completed search IP address (192.168.4.1)
+6. It Workedd!
 
 ## Problems
-Note your problems or errors here.  Google any error you may come across, and not what you tried (even if it does not work), and what was the final answer.
+I definitely had problems with the code. At first I tried to play around with the code
+and make it my own but for some reason the wifi would not come up. So once I left
+it with the default, it worked perfectly fine. 
+/*
+  WiFiAccessPoint.ino creates a WiFi access point and provides a web server on it.
 
-Example
-1. Arduino code will not load on ESP32 Cam.
-   Answer: Camera drivers were incorrect I needed to install the driver: [https://www.wch-ic.com/downloads/CH341SER_ZIP.html](https://github.com/martin-ger/esp32_nat_router).  I used file, "CH341SER.ZIP" and it worked.
+  Steps:
+  1. Connect to the access point "yourAp"
+  2. Point your web browser to http://192.168.4.1/H to turn the LED on or http://192.168.4.1/L to turn it off
+     OR
+     Run raw TCP "GET /H" and "GET /L" on PuTTY terminal with 192.168.4.1 as IP address and 80 as port
+
+  Created for arduino-esp32 on 04 July, 2018
+  by Elochukwu Ifediora (fedy0)
+*/
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiAP.h>
+
+#define LED_BUILTIN 2   // Set the GPIO pin where you connected your test LED or comment this line out if your dev board has a built-in LED
+
+// Set these to your desired credentials.
+const char *ssid = "yourAP";
+const char *password = "yourPassword";
+
+WiFiServer server(80);
+
+
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+
+  Serial.begin(115200);
+  Serial.println();
+  Serial.println("Configuring access point...");
+
+  // You can remove the password parameter if you want the AP to be open.
+  // a valid password must have more than 7 characters
+  if (!WiFi.softAP(ssid, password)) {
+    log_e("Soft AP creation failed.");
+    while(1);
+  }
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+  server.begin();
+
+  Serial.println("Server started");
+}
+
+void loop() {
+  WiFiClient client = server.available();   // listen for incoming clients
+
+  if (client) {                             // if you get a client,
+    Serial.println("New Client.");           // print a message out the serial port
+    String currentLine = "";                // make a String to hold incoming data from the client
+    while (client.connected()) {            // loop while the client's connected
+      if (client.available()) {             // if there's bytes to read from the client,
+        char c = client.read();             // read a byte, then
+        Serial.write(c);                    // print it out the serial monitor
+        if (c == '\n') {                    // if the byte is a newline character
+
+          // if the current line is blank, you got two newline characters in a row.
+          // that's the end of the client HTTP request, so send a response:
+          if (currentLine.length() == 0) {
+            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
+            // and a content-type so the client knows what's coming, then a blank line:
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-type:text/html");
+            client.println();
+
+            // the content of the HTTP response follows the header:
+            client.print("Click <a href=\"/H\">here</a> to turn ON the LED.<br>");
+            client.print("Click <a href=\"/L\">here</a> to turn OFF the LED.<br>");
+
+            // The HTTP response ends with another blank line:
+            client.println();
+            // break out of the while loop:
+            break;
+          } else {    // if you got a newline, then clear currentLine:
+            currentLine = "";
+          }
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
+          currentLine += c;      // add it to the end of the currentLine
+        }
+
+        // Check to see if the client request was "GET /H" or "GET /L":
+        if (currentLine.endsWith("GET /H")) {
+          digitalWrite(LED_BUILTIN, HIGH);               // GET /H turns the LED on
+        }
+        if (currentLine.endsWith("GET /L")) {
+          digitalWrite(LED_BUILTIN, LOW);                // GET /L turns the LED off
+        }
+      }
+    }
+    // close the connection:
+    client.stop();
+    Serial.println("Client Disconnected.");
+  }
+}
